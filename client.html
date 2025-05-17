@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Game API Client (Auto WebRTC)</title>
+  </head>
+  <body>
+    <h1>Game API Tester (WebRTC Auto)</h1>
+
+    <h2>Create Game</h2>
+    <form id="createForm">
+      <label>Username: <input type="text" id="createUsername" required></label><br>
+      <button type="submit">Create Game</button>
+    </form>
+
+    <h2>Join Game</h2>
+    <form id="joinForm">
+      <label>Username: <input type="text" id="joinUsername" required></label><br>
+      <label>Game ID: <input type="text" id="gameId" required></label><br>
+      <button type="submit">Join Game</button>
+    </form>
+
+    <h2>Send Message</h2>
+    <form id="sendMessageForm">
+      <input type="text" id="messageInput" placeholder="Enter message" required>
+      <button type="submit">Send Message</button>
+    </form>
+
+    <h3>Received Messages:</h3>
+    <pre id="receivedMessages"></pre>
+
+    <pre id="responseOutput"></pre>
+
+    <script>
+    let dataChannel = null;
+    let pc = null;
+
+    function setupDataChannel(channel) {
+      dataChannel = channel;
+      dataChannel.onmessage = function(event) {
+        console.log(event)
+        const receivedMessage = event.data;
+        const receivedMessagesElement = document.getElementById('receivedMessages');
+        receivedMessagesElement.textContent += `Received: ${receivedMessage}\n`;
+      };
+      dataChannel.onopen = function() {
+        console.log('Data channel is open.');
+      };
+    }
+
+    async function createOffer(isCreator) {
+      pc = new RTCPeerConnection();
+      pc.oniceconnectionstatechange = () => {
+        console.log("ICE connection state:", pc.iceConnectionState);
+      };
+
+      pc.onconnectionstatechange = () => {
+        console.log("Peer connection state:", pc.connectionState);
+      };
+
+      if (isCreator) {
+        setupDataChannel(pc.createDataChannel("client"));
+      } else {
+        pc.ondatachannel = (event) => setupDataChannel(event.channel);
+      }
+
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      // Wait for ICE gathering to complete
+      return new Promise(resolve => {
+        if (pc.iceGatheringState === 'complete') {
+          resolve(pc.localDescription);
+        } else {
+          pc.onicegatheringstatechange = () => {
+            if (pc.iceGatheringState === 'complete') {
+              resolve(pc.localDescription);
+            }
+          };
+        }
+      });
+    }
+
+
+    document.getElementById('sendMessageForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const message = document.getElementById('messageInput').value;
+
+      if (dataChannel && dataChannel.readyState === 'open') {
+        dataChannel.send(message);
+        const receivedMessagesElement = document.getElementById('receivedMessages');
+        receivedMessagesElement.textContent += `Sent: ${message}\n`;
+        document.getElementById('messageInput').value = '';
+      } else {
+        alert("Data channel is not open yet.");
+      }
+    });
+
+    document.getElementById('createForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const username = document.getElementById('createUsername').value;
+
+      try {
+        const offer = await createOffer(true);
+
+        const requestData = {
+          username,
+          offer: {
+            type: offer.type,
+            sdp: offer.sdp
+          }
+        };
+
+        const result = await postData('http://localhost:8080/create', requestData);
+        await pc.setRemoteDescription(result.SDP);
+
+        document.getElementById('responseOutput').textContent = JSON.stringify(result, null, 2);
+      } catch (error) {
+        document.getElementById('responseOutput').textContent = 'Error: ' + error;
+      }
+    });
+
+    document.getElementById('joinForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const username = document.getElementById('joinUsername').value;
+      const gameId = document.getElementById('gameId').value;
+
+      try {
+        const offer = await createOffer(true);
+
+        const requestData = {
+          username,
+          game_id: gameId,
+          offer: {
+            type: offer.type,
+            sdp: offer.sdp
+          }
+        };
+
+        const result = await postData('http://localhost:8080/join', requestData);
+        await pc.setRemoteDescription(result.SDP);
+
+        document.getElementById('responseOutput').textContent = JSON.stringify(result, null, 2);
+      } catch (error) {
+        document.getElementById('responseOutput').textContent = 'Error: ' + error;
+      }
+    });
+
+    async function postData(url = '', data = {}) {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      return response.json();
+    }
+    </script>
+  </body>
+</html>
+
