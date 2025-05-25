@@ -1,8 +1,8 @@
-module github.com/Mawio/primavera-jet-server/internal/requests
+module github.com/Mawio/primavera-jet-server
 
 go 1.24.3
 
-require github.com/pion/webrtc/v4 v4.1.1
+require github.com/pion/webrtc/v4 v4.1.0
 
 require (
 	github.com/google/uuid v1.6.0 // indirect

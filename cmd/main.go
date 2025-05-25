@@ -75,10 +75,9 @@ func getOrCreateGame(gameID string) *GameSession {
 
 // /create - Create a new game and return a unique ID.
 func createGameHandler(w http.ResponseWriter, r *http.Request) {
-	// Generate a new unique game ID
-	var request CreateGameRequest
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
+	request, err := requests.DecodeRequest[requests.CreateSession](r)
+	if err != nil {
+		//TODO: handle error
 		return
 	}
 
@@ -110,9 +109,9 @@ func createGameHandler(w http.ResponseWriter, r *http.Request) {
 
 // /join - Join an existing room.
 func joinRoomHandler(w http.ResponseWriter, r *http.Request) {
-	var request JoinGameRequest
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
+	request, err := requests.DecodeRequest[requests.JoinSession](r)
+	if err != nil {
+		//TODO: handle error
 		return
 	}
 

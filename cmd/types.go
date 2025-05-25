@@ -22,13 +22,3 @@ type GameSession struct {
 	mu      sync.Mutex
 }
 
-type CreateGameRequest struct {
-	Username string                    `json:"username"`
-	Offer    webrtc.SessionDescription `json:"offer"`
-}
-
-type JoinGameRequest struct {
-	Username string                    `json:"username"`
-	Offer    webrtc.SessionDescription `json:"offer"`
-	GameID   string                    `json:"game_id"`
-}
