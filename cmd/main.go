@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,52 +9,13 @@ import (
 	"sync"
 
 	"github.com/pion/webrtc/v4"
+	"github.com/Mawio/primavera-jet-server/internal/requests"
 )
 
 var (
 	games   = make(map[string]*GameSession) // Mapping of room IDs to rooms
 	gamesMu sync.Mutex
 )
-
-// Generates a unique room ID.
-func generateGameID() string {
-	//TODO
-	return "primavera"
-}
-
-func setupWebRtcConnection(offer webrtc.SessionDescription) (Connection, error) {
-	// Create a new PeerConnection
-	peerConnection, err := webrtc.NewPeerConnection(webrtc.Configuration{})
-	if err != nil {
-		return Connection{}, errors.New("Failed to create peer connection")
-	}
-
-	// Set the remote SDP offer
-	err = peerConnection.SetRemoteDescription(offer)
-	if err != nil {
-		return Connection{}, errors.New("Failed to set remote description")
-	}
-
-	// Create an SDP answer
-	answer, err := peerConnection.CreateAnswer(nil)
-	if err != nil {
-		return Connection{}, errors.New("Failed to create answer")
-	}
-
-	// Set local SDP answer
-	err = peerConnection.SetLocalDescription(answer)
-	if err != nil {
-		return Connection{}, errors.New("Failed to set local description")
-	}
-
-	// Wait until ICE gathering is complete
-	gatherComplete := webrtc.GatheringCompletePromise(peerConnection)
-	<-gatherComplete
-
-	return Connection{
-		peerConnection: peerConnection,
-	}, nil
-}
 
 func setupHandlers(client *Client, game *GameSession) {
 	client.connection.peerConnection.OnDataChannel(func(dataChannel *webrtc.DataChannel) {
@@ -90,7 +50,7 @@ func setupHandlers(client *Client, game *GameSession) {
 			game.mu.Lock()
 			defer game.mu.Unlock()
 
-			slices.DeleteFunc(game.clients, func(c *Client) bool {
+			game.clients = slices.DeleteFunc(game.clients, func(c *Client) bool {
 				return c == client
 			})
 		}
