@@ -73,8 +73,8 @@ func getOrCreateGame(gameID string) *GameSession {
 	return game
 }
 
-// /create - Create a new game and return a unique ID.
-func createGameHandler(w http.ResponseWriter, r *http.Request) {
+// /create - Create a new session and return a unique ID.
+func createSessionHandler(w http.ResponseWriter, r *http.Request) {
 	request, err := requests.DecodeRequest[requests.CreateSession](r)
 	if err != nil {
 		//TODO: handle error
@@ -107,11 +107,11 @@ func createGameHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// /join - Join an existing room.
-func joinRoomHandler(w http.ResponseWriter, r *http.Request) {
+// /join - Join an existing session.
+func joinSessionHandler(w http.ResponseWriter, r *http.Request) {
 	request, err := requests.DecodeRequest[requests.JoinSession](r)
 	if err != nil {
-		//TODO: handle error
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -121,7 +121,7 @@ func joinRoomHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	game := getOrCreateGame(request.GameID)
+	game := getOrCreateGame(request.SessionID)
 	game.mu.Lock()
 	defer game.mu.Unlock()
 
@@ -150,8 +150,8 @@ func joinRoomHandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	// Set up HTTP routes
-	http.HandleFunc("/create", corsHandler(createGameHandler))
-	http.HandleFunc("/join", corsHandler(joinRoomHandler))
+	http.HandleFunc("/create", corsHandler(createSessionHandler))
+	http.HandleFunc("/join", corsHandler(joinSessionHandler))
 
 	// Start the server
 	fmt.Println("Server started at :8080")

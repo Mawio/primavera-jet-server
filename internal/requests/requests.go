@@ -19,7 +19,7 @@ type JoinSession struct {
 	SessionID string                    `json:"session_id"`
 }
 
-func NewRequest[Request any](r *http.Request) (*Request, error) {
+func DecodeRequest[Request any](r *http.Request) (*Request, error) {
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
