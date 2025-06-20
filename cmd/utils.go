@@ -17,7 +17,7 @@ func corsHandler(h http.HandlerFunc) http.HandlerFunc {
 }
 
 // Generates a unique room ID.
-func generateGameID() string {
+func generateSessionId() string {
 	//TODO
 	return "primavera"
 }

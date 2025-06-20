@@ -27,7 +27,7 @@ func createSession(sessionId string) (*Session, error) {
 		return nil, fmt.Errorf("Session %s already exists", sessionId)
 	}
 
-	session := &Session{}
+	session := &Session{id: sessionId}
 	sessions[sessionId] = session
 	return session, nil
 }
@@ -67,9 +67,10 @@ func (session *Session) addUser(user *User) error {
 			defer session.mu.Unlock()
 
 			for _, u := range session.users {
-				if u.username != user.username{
+				if u.username != user.username {
 					u.sendMessage(msg.Data)
-				}}
+				}
+			}
 		})
 
 		user.connection.dataChannel = dataChannel

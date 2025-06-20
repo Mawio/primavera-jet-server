@@ -39,7 +39,9 @@
       dataChannel = channel;
       dataChannel.onmessage = function(event) {
         console.log(event)
-        const receivedMessage = event.data;
+        const decoder = new TextDecoder();
+        const str = decoder.decode(event.data);
+        const receivedMessage = str;
         const receivedMessagesElement = document.getElementById('receivedMessages');
         receivedMessagesElement.textContent += `Received: ${receivedMessage}\n`;
       };
@@ -130,7 +132,7 @@
 
         const requestData = {
           username,
-          game_id: gameId,
+          session_id: gameId,
           offer: {
             type: offer.type,
             sdp: offer.sdp

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"slices"
 
 	"github.com/Mawio/primavera-jet-server/internal/requests"
 )
