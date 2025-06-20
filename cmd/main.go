@@ -10,10 +10,6 @@ import (
 	"github.com/Mawio/primavera-jet-server/internal/requests"
 )
 
-var (
-	sessions   = make(map[string]*Session)
-)
-
 // /create - Create a new session and return a unique ID.
 func createSessionHandler(w http.ResponseWriter, r *http.Request) {
 	request, err := requests.DecodeRequest[requests.CreateSession](r)
@@ -22,24 +18,20 @@ func createSessionHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	connection, err := setupWebRtcConnection(request.Offer)
+	session, err := createSession(generateSessionId())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		//TODO: handle error
 		return
 	}
 
-	session := getOrCreateSession(generateSessionId())
-
-	session.addUser(&User{
-		username:   request.Username,
-		connection: connection,
-	})
+	user := NewUser(request.Offer, request.Username)
+	session.addUser(user)
 
 	// Respond with the sessionId 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
 		"game_id": session.id,
-		"SDP":     connection.peerConnection.LocalDescription(), // Assuming connection is the peer connection
+		"SDP":     user.connection.peerConnection.LocalDescription(), // Assuming connection is the peer connection
 	})
 }
 
@@ -51,36 +43,19 @@ func joinSessionHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	connection, err := setupWebRtcConnection(request.Offer)
+	session, err := getSession(request.SessionID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		//TODO: handle error
 		return
 	}
 
-	game := getOrCreateSession(request.SessionID)
-	game.mu.Lock()
-	defer game.mu.Unlock()
-
-	if slices.ContainsFunc(game.clients, func(client *User) bool {
-		return client.username == request.Username
-	}) {
-		http.Error(w, "Username already in use in this game", http.StatusInternalServerError)
-		return
-	}
-
-	client := &User{
-		username:   request.Username,
-		connection: connection,
-	}
-
-	setupHandlers(client, game)
-
-	game.clients = append(game.clients, client)
+	user := NewUser(request.Offer, request.Username)
+	session.addUser(user)
 
 	// Return the answer SDP to the client
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
-		"SDP": connection.peerConnection.LocalDescription(),
+		"SDP": user.connection.peerConnection.LocalDescription(),
 	})
 }
 

@@ -2,51 +2,30 @@ package main
 
 import (
 	"fmt"
-	"slices"
+
+	"github.com/pion/webrtc/v4"
 )
 
 type User struct {
-	username string
+	username   string
 	connection Connection
 }
 
-func (user *User) setupHandlers(session *Session) {
-	user.connection.peerConnection.OnDataChannel(func(dataChannel *webrtc.DataChannel) {
-		fmt.Printf("New DataChannel for client %s\n", user.username)
+func NewUser(offer webrtc.SessionDescription, username string) *User {
+	connection, err := setupWebRtcConnection(offer)
+	if err != nil {
+		return nil
+	}
 
-		// Register channel opening handling
-		dataChannel.OnOpen(func() {
-			fmt.Printf("Data channel with client %s open.\n", user.username)
-		})
-
-		// Register text message handling
-		dataChannel.OnMessage(func(msg webrtc.DataChannelMessage) {
-			fmt.Printf("Received message from %s\n", user.username)
-			// Forward the message to all other peers in the game
-			session.mu.Lock()
-			defer session.mu.Unlock()
-
-			for _, u := range session.users {
-				if u.username != user.username && u.connection.dataChannel != nil {
-					fmt.Printf("Sending message to %s\n", u.username)
-					_ = u.connection.dataChannel.Send(msg.Data)
-				}
-			}
-		})
-
-		user.connection.dataChannel = dataChannel
-	})
-
-	// Handle peer connection state changes
-	user.connection.peerConnection.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
-		if state == webrtc.PeerConnectionStateDisconnected || state == webrtc.PeerConnectionStateFailed || state == webrtc.PeerConnectionStateClosed {
-			session.mu.Lock()
-			defer session.mu.Unlock()
-
-			session.users = slices.DeleteFunc(session.users, func(c *User) bool {
-				return c == user
-			})
-		}
-	})
+	return &User{
+		username: username,
+		connection: connection,
+	}
 }
 
+func (user User) sendMessage(data []byte) {
+	if user.connection.dataChannel != nil {
+		fmt.Printf("Sending message to %s\n", user.username)
+		_ = user.connection.dataChannel.Send(data)
+	}
+}

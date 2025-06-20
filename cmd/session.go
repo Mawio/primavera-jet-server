@@ -9,29 +9,49 @@ import (
 )
 
 type Session struct {
-	id      string
+	id    string
 	users []*User
-	mu      sync.Mutex
+	mu    sync.Mutex
 }
 
 var (
+	sessions   = make(map[string]*Session)
 	sessionsMu sync.Mutex
 )
 
-func getOrCreateSession(sessionId string) *Session {
+func createSession(sessionId string) (*Session, error) {
 	sessionsMu.Lock()
 	defer sessionsMu.Unlock()
 
-	if session, ok := sessions[sessionId]; ok {
-		return session
+	if _, ok := sessions[sessionId]; ok {
+		return nil, fmt.Errorf("Session %s already exists", sessionId)
 	}
 
 	session := &Session{}
 	sessions[sessionId] = session
-	return session
+	return session, nil
 }
 
-func (session *Session) addUser(user *User) {
+func getSession(sessionId string) (*Session, error) {
+	sessionsMu.Lock()
+	defer sessionsMu.Unlock()
+
+	if session, ok := sessions[sessionId]; ok {
+		return session, nil
+	} else {
+		return nil, fmt.Errorf("Session %s does not exist", sessionId)
+	}
+
+}
+
+func (session *Session) addUser(user *User) error {
+
+	if slices.ContainsFunc(session.users, func(u *User) bool {
+		return user.username == u.username
+	}) {
+		return fmt.Errorf("Username already in use in this session")
+	}
+
 	user.connection.peerConnection.OnDataChannel(func(dataChannel *webrtc.DataChannel) {
 		fmt.Printf("New DataChannel for user %s\n", user.username)
 
@@ -47,11 +67,9 @@ func (session *Session) addUser(user *User) {
 			defer session.mu.Unlock()
 
 			for _, u := range session.users {
-				if u.username != user.username && u.connection.dataChannel != nil {
-					fmt.Printf("Sending message to %s\n", u.username)
-					_ = u.connection.dataChannel.Send(msg.Data)
-				}
-			}
+				if u.username != user.username{
+					u.sendMessage(msg.Data)
+				}}
 		})
 
 		user.connection.dataChannel = dataChannel
@@ -70,5 +88,5 @@ func (session *Session) addUser(user *User) {
 	})
 
 	session.users = append(session.users, user)
+	return nil
 }
-
