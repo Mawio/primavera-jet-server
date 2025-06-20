@@ -24,7 +24,10 @@ func createSessionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user := NewUser(request.Offer, request.Username)
-	session.addUser(user)
+	if err := session.addUser(user); err != nil {
+		//TODO: handle error
+		return
+	}
 
 	// Respond with the sessionId 
 	w.Header().Set("Content-Type", "application/json")
@@ -49,7 +52,10 @@ func joinSessionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user := NewUser(request.Offer, request.Username)
-	session.addUser(user)
+	if err := session.addUser(user); err != nil {
+		//TODO: handle error
+		return
+	}
 
 	// Return the answer SDP to the client
 	w.Header().Set("Content-Type", "application/json")
